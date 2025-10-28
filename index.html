@@ -865,6 +865,10 @@
             problemStartTime = Date.now();
             $answerInput.value = '';
             $answerInput.focus();
+            
+            // RE-ENABLE CONTROLS for the new problem
+            $answerInput.disabled = false;
+            $submitButton.disabled = false;
         }
 
         function updateStats() {
@@ -990,8 +994,9 @@
             // 3. Update UI
             $settingsPanel.classList.add('hidden');
             $gameArea.classList.remove('hidden');
-            $submitButton.disabled = false;
-            $answerInput.disabled = false;
+            // Controls are explicitly enabled in nextProblem()
+            // $submitButton.disabled = false; 
+            // $answerInput.disabled = false;
             $stopButton.disabled = false; 
             $feedback.textContent = '';
             
@@ -1040,12 +1045,17 @@
             // Reset strategy tip button state for the new problem
             $getStrategyTipButton.disabled = false;
             $getStrategyTipButton.onclick = () => getStrategyTip(currentProblem);
-
-            setTimeout(nextProblem, 500);
+            
+            // NOTE: The re-enabling of controls is moved here (and at the end of renderProblem)
+            // to ensure they are available for the new question.
         }
 
         function submitAnswer() {
-            if (!isGameRunning) return;
+            if (!isGameRunning || $submitButton.disabled) return; // FIX: Added check to prevent double-submission
+
+            // FIX: IMMEDIATELY LOCK CONTROLS
+            $submitButton.disabled = true;
+            $answerInput.disabled = true;
 
             const timeTaken = (Date.now() - problemStartTime) / 1000;
             const userAnswer = parseInt($answerInput.value);
@@ -1093,7 +1103,8 @@
             $getStrategyTipButton.disabled = false;
             $getStrategyTipButton.onclick = () => getStrategyTip(currentProblem);
 
-            setTimeout(nextProblem, 500);
+            // FIX: nextProblem will now re-enable the submit button and input field
+            setTimeout(nextProblem, 500); 
         }
 
         function endGame(title) {
