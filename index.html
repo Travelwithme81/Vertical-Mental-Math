@@ -338,7 +338,10 @@
         async function setupFirebase() {
             if (!firebaseConfig) {
                 console.error("Firebase config not available. History saving will be disabled.");
-                $historyLoading.textContent = "History disabled (Firebase config missing).";
+                // FIX: Updated message for clarity.
+                $historyLoading.textContent = "History disabled (Canvas environment config missing).";
+                isAuthReady = false;
+                $exportCsvButton.disabled = true;
                 return;
             }
 
