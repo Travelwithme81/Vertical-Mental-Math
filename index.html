@@ -142,11 +142,11 @@
                 </div>
                 <div class="col-span-1">
                     <label for="num-problems" class="block text-sm font-medium mb-1">Total Problems</label>
-                    <input type="number" id="num-problems" value="10" min="1" max="100" class="w-full p-2 rounded bg-input-bg border border-input-bg focus:border-accent outline-none transition" />
+                    <!-- DEFAULT: 10 --><input type="number" id="num-problems" value="10" min="1" max="100" class="w-full p-2 rounded bg-input-bg border border-input-bg focus:border-accent outline-none transition" />
                 </div>
                 <div class="col-span-1">
                     <label for="num-terms" class="block text-sm font-medium mb-1">Numbers in Column</label>
-                    <input type="number" id="num-terms" value="8" min="2" max="15" class="w-full p-2 rounded bg-input-bg border border-input-bg focus:border-accent outline-none transition" />
+                    <!-- DEFAULT: 2 --><input type="number" id="num-terms" value="2" min="2" max="15" class="w-full p-2 rounded bg-input-bg border border-input-bg focus:border-accent outline-none transition" />
                 </div>
             </div>
             
@@ -154,8 +154,9 @@
                 <div class="col-span-1">
                     <label for="operation-type" class="block text-sm font-medium mb-1">Operation</label>
                     <select id="operation-type" class="w-full p-2 rounded bg-input-bg border border-input-bg focus:border-accent outline-none transition">
-                        <option value="mix">Mixed (+, -, x, /)</option>
+                        <!-- ADDITION IS NOW DEFAULT -->
                         <option value="+">Addition (+)</option>
+                        <option value="mix">Mixed (+, -, x, /)</option>
                         <option value="-">Subtraction (-)</option>
                         <option value="*">Multiplication (x)</option>
                         <option value="/">Division (÷)</option>
@@ -163,11 +164,11 @@
                 </div>
                 <div class="col-span-1">
                     <label for="min-digits" class="block text-sm font-medium mb-1">Min Digits</label>
-                    <input type="number" id="min-digits" value="2" min="1" max="6" class="w-full p-2 rounded bg-input-bg border border-input-bg focus:border-accent outline-none transition" />
+                    <!-- DEFAULT: 1 --><input type="number" id="min-digits" value="1" min="1" max="6" class="w-full p-2 rounded bg-input-bg border border-input-bg focus:border-accent outline-none transition" />
                 </div>
                 <div class="col-span-1">
                     <label for="max-digits" class="block text-sm font-medium mb-1">Max Digits (2 for 99)</label>
-                    <input type="number" id="max-digits" value="2" min="1" max="6" class="w-full p-2 rounded bg-input-bg border border-input-bg focus:border-accent outline-none transition" />
+                    <!-- DEFAULT: 6 --><input type="number" id="max-digits" value="6" min="1" max="6" class="w-full p-2 rounded bg-input-bg border border-input-bg focus:border-accent outline-none transition" />
                 </div>
             </div>
 
@@ -187,16 +188,13 @@
             </div>
 
             <!-- Answer Input and Feedback --><div class="flex flex-col space-y-3">
+                <!-- ANSWER INPUT - Now handles submission automatically on correct match -->
                 <input type="number" id="answer-input" placeholder="Your Answer" disabled
                     class="w-full p-3 text-3xl text-center rounded-lg bg-input-bg border border-input-bg focus:border-accent outline-none transition custom-placeholder" />
 
                 <div class="flex space-x-2">
-                    <button id="submit-answer" disabled
-                        class="flex-1 py-3 bg-accent text-primary-bg font-bold rounded-lg hover:bg-emerald-400 transition transform shadow-lg">
-                        Submit
-                    </button>
                     <!-- STOP BUTTON --><button id="stop-game" disabled
-                        class="py-3 px-6 bg-error text-text-color font-bold rounded-lg hover:bg-red-600 transition transform shadow-lg">
+                        class="flex-1 py-3 px-6 bg-error text-text-color font-bold rounded-lg hover:bg-red-600 transition transform shadow-lg">
                         Stop
                     </button>
                 </div>
@@ -300,7 +298,7 @@
         const $settingsPanel = document.getElementById('settings-panel');
         const $gameArea = document.getElementById('game-area');
         const $startButton = document.getElementById('start-game');
-        const $submitButton = document.getElementById('submit-answer');
+        // const $submitButton = document.getElementById('submit-answer'); // REMOVED
         const $answerInput = document.getElementById('answer-input');
         const $timer = document.getElementById('timer');
         const $progressTracker = document.getElementById('progress-tracker');
@@ -331,6 +329,10 @@
         
         // NEW ADVANCED ELEMENTS
         const $chartTooltip = document.getElementById('chart-tooltip');
+        
+        // Accessing the non-existent submit button for disabling/enabling logic 
+        // We will just use $answerInput.disabled instead of checking $submitButton.disabled
+        const $submitButton = { disabled: false }; // Dummy object to satisfy old submitButton references
 
 
         // --- Firebase Setup ---
@@ -871,7 +873,7 @@
             
             // RE-ENABLE CONTROLS for the new problem
             $answerInput.disabled = false;
-            $submitButton.disabled = false;
+            // $submitButton.disabled = false; // Submit button is gone
         }
 
         function updateStats() {
@@ -997,9 +999,7 @@
             // 3. Update UI
             $settingsPanel.classList.add('hidden');
             $gameArea.classList.remove('hidden');
-            // Controls are explicitly enabled in nextProblem()
-            // $submitButton.disabled = false; 
-            // $answerInput.disabled = false;
+            $answerInput.disabled = false; // Enable input
             $stopButton.disabled = false; 
             $feedback.textContent = '';
             
@@ -1018,22 +1018,26 @@
 
         function startTimer() {
             if (timerInterval) clearInterval(timerInterval);
+            
+            if (!isGameRunning) return; // Prevent timer logic if game is already stopped
 
             timerInterval = setInterval(() => {
                 timeLeft--;
-                updateStats();
 
-                if (timeLeft <= 10) {
-                    $timer.className = 'text-error';
-                } else if (timeLeft <= 0) {
+                if (timeLeft <= 0) {
                     clearInterval(timerInterval);
                     endGame('Time Up!');
+                } else {
+                    updateStats();
+                    if (timeLeft <= 10) {
+                        $timer.className = 'text-error';
+                    } 
                 }
             }, 1000);
         }
 
         function nextProblem() {
-            if (currentProblemIndex >= numProblems) {
+            if (currentProblemIndex >= numProblems || !isGameRunning) {
                 endGame('Challenge Complete!');
                 return;
             }
@@ -1049,21 +1053,18 @@
             $getStrategyTipButton.disabled = false;
             $getStrategyTipButton.onclick = () => getStrategyTip(currentProblem);
             
-            // NOTE: The re-enabling of controls is moved here (and at the end of renderProblem)
-            // to ensure they are available for the new question.
+            // RE-ENABLE CONTROLS for the new problem
+            // NOTE: answer input enabled in renderProblem()
         }
 
-        function submitAnswer() {
-            if (!isGameRunning || $submitButton.disabled) return; // FIX: Added check to prevent double-submission
+        function submitAnswer(isCorrect, userAnswer) {
+            if (!isGameRunning || $answerInput.disabled) return; 
 
-            // FIX: IMMEDIATELY LOCK CONTROLS
-            $submitButton.disabled = true;
+            // IMMEDIATELY LOCK CONTROLS
             $answerInput.disabled = true;
 
             const timeTaken = (Date.now() - problemStartTime) / 1000;
-            const userAnswer = parseInt($answerInput.value);
             const correctAnswer = currentProblem.sum;
-            const isCorrect = userAnswer === correctAnswer;
             
             // Generate problem string for storage/review
             const opSymbol = currentProblem.rawOperator === '+' ? ' + ' : 
@@ -1102,18 +1103,36 @@
                 $feedback.className = 'text-center text-xl h-6 text-error font-semibold';
             }
             
-            // Enable strategy button after submitting
+            // Enable strategy button after submission
             $getStrategyTipButton.disabled = false;
             $getStrategyTipButton.onclick = () => getStrategyTip(currentProblem);
 
-            // FIX: nextProblem will now re-enable the submit button and input field
-            setTimeout(nextProblem, 500); 
+            // FIX: INSTANTLY change to the next question
+            nextProblem(); 
         }
+        
+        // NEW FUNCTION: Checks the input and triggers submitAnswer instantly if correct
+        function checkAndSubmitOnInput() {
+            if (!isGameRunning || $answerInput.disabled || !currentProblem) return;
+
+            const inputVal = $answerInput.value.trim();
+            const correctAnswer = currentProblem.sum;
+            
+            // Must be a valid number and completely match the correct answer
+            if (inputVal === String(correctAnswer)) {
+                // Trigger submission logic
+                submitAnswer(true, parseInt(inputVal));
+            } else if (inputVal.length > String(correctAnswer).length) {
+                // If the user overshoots the expected length, mark it incorrect and submit (to prevent infinite waiting)
+                submitAnswer(false, parseInt(inputVal));
+            }
+        }
+
 
         function endGame(title) {
             isGameRunning = false;
             if (timerInterval) clearInterval(timerInterval);
-            $submitButton.disabled = true;
+            // $submitButton.disabled = true; // Submit button is gone
             $answerInput.disabled = true;
             $stopButton.disabled = true;
             $getStrategyTipButton.disabled = true; // Disable strategy button at end of game
@@ -1259,7 +1278,7 @@
             setupFirebase(); // Initialize Firebase on load
             
             $startButton.addEventListener('click', startGame);
-            $submitButton.addEventListener('click', submitAnswer);
+            // $submitButton.addEventListener('click', submitAnswer); // REMOVED
             $closeModal.addEventListener('click', resetGame);
             $stopButton.addEventListener('click', () => endGame('Challenge Stopped'));
             $reviewProblemsButton.addEventListener('click', renderProblemReview);
@@ -1268,19 +1287,15 @@
                 $modal.classList.remove('hidden'); // Return to the main results modal
             });
             
-            $answerInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !$submitButton.disabled) {
-                    e.preventDefault(); // Prevent default form submission behavior (if any)
-                    submitAnswer();
-                }
-            });
+            // NEW LISTENER for automatic submission on input
+            $answerInput.addEventListener('input', checkAndSubmitOnInput);
             
-            // Initialize digit inputs and num terms control
+            // Initialize digit inputs and num terms control (SETTING DEFAULTS)
             document.getElementById('max-time').value = 60;
             document.getElementById('num-problems').value = 10;
-            document.getElementById('num-terms').value = 8;
-            document.getElementById('min-digits').value = 2; // NEW
-            document.getElementById('max-digits').value = 2;
+            document.getElementById('num-terms').value = 2; /* DEFAULT: 2 */
+            document.getElementById('min-digits').value = 1; /* DEFAULT: 1 */
+            document.getElementById('max-digits').value = 6; /* DEFAULT: 6 */
         });
 
     </script>
