@@ -17,7 +17,7 @@
             width: 8px;
         }
         ::-webkit-scrollbar-track {
-            background: #2a3344;
+            background: #111827; /* Darker dark mode */
         }
         ::-webkit-scrollbar-thumb {
             background: #4b5563;
@@ -100,17 +100,21 @@
             transition: opacity 0.2s;
             z-index: 10;
         }
+        /* New darker background */
+        .bg-primary-darker { 
+            background-color: #111827; /* Very dark slate */
+        }
     </style>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        'primary-bg': '#1f2937', // Dark Slate
-                        'secondary-bg': '#374151', // Slightly Lighter Slate
+                        'primary-bg': '#111827', // Darker Dark Mode
+                        'secondary-bg': '#1f2937', // Slightly Lighter Slate
                         'accent': '#34d399', // Emerald Green
                         'text-color': '#f3f4f6',
-                        'input-bg': '#4b5563',
+                        'input-bg': '#374151',
                         'error': '#f87171',
                         'success-bg': '#064e3b',
                         'error-bg': '#7f1d1d',
@@ -135,6 +139,8 @@
         <!-- Settings Panel --><div id="settings-panel" class="mb-6 space-y-4 p-4 border border-input-bg rounded-lg">
             <h2 class="text-xl font-semibold mb-3 text-white">Custom Settings</h2>
             
+            <p id="restart-prompt" class="text-sm text-gray-400 mb-4 h-6">Ready to start?</p>
+
             <!-- Row 1: Time, Problems, Terms --><div class="grid grid-cols-3 gap-4">
                 <div class="col-span-1">
                     <label for="max-time" class="block text-sm font-medium mb-1">Time Limit (sec)</label>
@@ -160,6 +166,9 @@
                         <option value="-">Subtraction (-)</option>
                         <option value="*">Multiplication (x)</option>
                         <option value="/">Division (÷)</option>
+                        <!-- NEW OPERATIONS ADDED -->
+                        <option value="sq">Squares (Sq)</option>
+                        <option value="tbl">Tables (Tbl)</option>
                     </select>
                 </div>
                 <div class="col-span-1">
@@ -171,6 +180,8 @@
                     <!-- DEFAULT: 6 --><input type="number" id="max-digits" value="6" min="1" max="6" class="w-full p-2 rounded bg-input-bg border border-input-bg focus:border-accent outline-none transition" />
                 </div>
             </div>
+            
+            <!-- Removed New Feature 2 (Exclude Negatives) and New Feature 8 (Max Difficulty Toggle) -->
 
             <button id="start-game" class="w-full mt-4 py-3 bg-accent text-primary-bg font-bold rounded-lg hover:bg-emerald-400 transition transform hover:scale-[1.01] shadow-lg">
                 Start Challenge
@@ -178,17 +189,21 @@
         </div>
         
         <!-- Game Area --><div id="game-area" class="hidden">
+            <!-- Removed New Feature 5: Visual Countdown Bar -->
+
             <!-- Stats Bar --><div class="flex justify-between items-center mb-4 text-lg font-semibold border-b border-input-bg pb-2">
                 <div id="progress-tracker" class="text-white">Progress: 0/0</div>
+                <!-- Reverted to basic timer display (removed fractional part) -->
                 <div id="timer" class="text-accent">Time: 0s</div>
             </div>
 
-            <!-- Problem Display --><div id="problem-display" class="bg-primary-bg p-4 mb-4 text-3xl sm:text-4xl">
+            <!-- Problem Display --><div id="problem-display" class="bg-primary-bg p-4 mb-4 text-3xl sm:text-4xl relative">
+                <!-- Removed New Feature 9: Dynamic Problem Counter -->
+                <div id="q-number-display" class="absolute top-2 left-2 text-lg font-bold text-gray-500">Q0</div>
                 <p class="text-center text-lg text-gray-400">Press Start to begin.</p>
             </div>
 
             <!-- Answer Input and Feedback --><div class="flex flex-col space-y-3">
-                <!-- ANSWER INPUT - Now handles submission automatically on correct match -->
                 <input type="number" id="answer-input" placeholder="Your Answer" disabled
                     class="w-full p-3 text-3xl text-center rounded-lg bg-input-bg border border-input-bg focus:border-accent outline-none transition custom-placeholder" />
 
@@ -197,6 +212,7 @@
                         class="flex-1 py-3 px-6 bg-error text-text-color font-bold rounded-lg hover:bg-red-600 transition transform shadow-lg">
                         Stop
                     </button>
+                    <!-- Removed New Feature 3: Session History Button -->
                 </div>
                 
                 <p id="feedback" class="text-center text-xl h-6"></p>
@@ -222,17 +238,30 @@
                 </button>
             </div>
 
-            <!-- NEW: Total Stats --><div id="total-stats" class="grid grid-cols-2 gap-4 mb-4 p-3 bg-primary-bg rounded-lg border border-input-bg">
+            <!-- Total Stats -->
+            <div id="total-stats" class="grid grid-cols-3 gap-4 mb-4 p-3 bg-primary-bg rounded-lg border border-input-bg">
                 <div class="text-center">
-                    <p class="text-xs text-gray-400 uppercase tracking-wider">Total Solved Questions</p>
-                    <p id="total-solved-display" class="text-3xl font-bold text-accent">0</p>
+                    <p class="text-xs text-gray-400 uppercase tracking-wider">Total Correct Answers</p>
+                    <p id="total-solved-display" class="text-2xl font-bold text-accent">0</p>
+                </div>
+                <div class="text-center">
+                    <!-- Total Attempted Metric (Kept) -->
+                    <p class="text-xs text-gray-400 uppercase tracking-wider">Total Attempted Questions</p>
+                    <p id="total-attempted-display" class="text-2xl font-bold text-white">0</p>
                 </div>
                 <div class="text-center">
                     <p class="text-xs text-gray-400 uppercase tracking-wider">Total Time Spent (Minutes)</p>
-                    <p id="total-time-display" class="text-3xl font-bold text-speed-color">0</p>
+                    <p id="total-time-display" class="text-2xl font-bold text-speed-color">0</p>
+                </div>
+                <div class="text-center col-span-3 pt-2">
+                     <!-- Fastest Quiz Time (Kept) -->
+                     <p class="text-xs text-gray-400 uppercase tracking-wider">Fastest Completed Quiz (min 10 Q)</p>
+                     <p id="fastest-quiz-display" class="text-2xl font-bold text-yellow-400">N/A</p>
                 </div>
             </div>
-            <!-- Performance Chart Area --><div id="accuracy-chart" class="chart-container h-40 w-full mb-4 rounded-lg bg-primary-bg p-2 flex items-center justify-center">
+
+            <!-- Performance Chart Area - Reverted to basic chart -->
+            <div id="accuracy-chart" class="chart-container h-52 w-full mb-4 rounded-lg bg-primary-bg p-2 flex flex-col justify-center">
                  <p class="text-gray-400 text-sm" id="chart-message">Complete a quiz to see your trend.</p>
             </div>
             
@@ -268,20 +297,15 @@
             </button>
         </div>
     </div>
+
+    <!-- Removed New Feature 3: Session Log Modal -->
     
     <!-- Tooltip Element for Charts --><div id="chart-tooltip" class="tooltip"></div>
 
     <script type="module">
-        // --- Firebase Imports (Keeping structure minimal for compliance, but not functional) ---
-        // Note: Imports are kept for context, but all Firebase logic is replaced by localStorage.
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        // import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        // import { 
-        //     getFirestore, collection, doc, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, setLogLevel 
-        // } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Global variables related to persistence setup
+        // --- Persistence Keys ---
         const HISTORY_STORAGE_KEY = 'mentalMathHistory';
+        const SETTINGS_STORAGE_KEY = 'mentalMathSettings'; 
         
         // Global variables for game state
         let maxTime, numProblems, numTerms, maxDigits, minDigits;
@@ -290,6 +314,7 @@
         let currentProblemIndex = 0;
         let score = 0;
         let timerInterval = null;
+        let startTime; // Stores the moment the game started (for total time calc)
         let timeLeft;
         let isGameRunning = false;
         let results = [];
@@ -304,10 +329,20 @@
         const $answerInput = document.getElementById('answer-input');
         const $timer = document.getElementById('timer');
         const $progressTracker = document.getElementById('progress-tracker');
-        const $problemDisplay = document.getElementById('problem-display');
         const $feedback = document.getElementById('feedback');
+        const $operationType = document.getElementById('operation-type');
         
-        // Modal elements
+        // Total Stats & History
+        const $totalSolvedDisplay = document.getElementById('total-solved-display');
+        const $totalAttemptedDisplay = document.getElementById('total-attempted-display'); 
+        const $totalTimeDisplay = document.getElementById('total-time-display');
+        const $fastestQuizDisplay = document.getElementById('fastest-quiz-display'); 
+        const $historyTable = document.getElementById('history-table');
+        const $historyLoading = document.getElementById('history-loading');
+        const $exportCsvButton = document.getElementById('export-csv');
+        const $accuracyChart = document.getElementById('accuracy-chart');
+        
+        // Modals
         const $modal = document.getElementById('modal');
         const $modalTitle = document.getElementById('modal-title');
         const $modalMessage = document.getElementById('modal-message');
@@ -315,52 +350,101 @@
         const $reviewProblemsButton = document.getElementById('review-problems');
         const $reviewModal = document.getElementById('review-modal');
         const $closeReviewModal = document.getElementById('close-review-modal');
-        const $reviewList = document.getElementById('review-list');
-        
         const $stopButton = document.getElementById('stop-game');
-        const $operationType = document.getElementById('operation-type');
-        const $historyTable = document.getElementById('history-table');
-        const $historyLoading = document.getElementById('history-loading');
-        const $exportCsvButton = document.getElementById('export-csv');
-        const $accuracyChart = document.getElementById('accuracy-chart'); 
         
-        // TOTAL STATS ELEMENTS
-        const $totalSolvedDisplay = document.getElementById('total-solved-display');
-        const $totalTimeDisplay = document.getElementById('total-time-display');
-
-        
-        // GEMINI ELEMENTS
+        // Gemini
         const $getStrategyTipButton = document.getElementById('get-strategy-tip');
         const $strategyTipOutput = document.getElementById('strategy-tip-output');
-        
-        // ADVANCED ELEMENTS
         const $chartTooltip = document.getElementById('chart-tooltip');
+        const $restartPrompt = document.getElementById('restart-prompt'); 
+        const $problemDisplay = document.getElementById('problem-display'); 
+        const $qNumberDisplay = document.getElementById('q-number-display'); 
         
+        // Placeholder for removed feature (default: true)
+        const $excludeNegatives = { checked: true };
+
+
         // --- Persistence (Local Storage) Logic ---
 
+        function saveSettings() {
+            try {
+                const settings = {
+                    op: $operationType.value,
+                    minD: document.getElementById('min-digits').value,
+                    maxD: document.getElementById('max-digits').value,
+                    terms: document.getElementById('num-terms').value,
+                    maxT: document.getElementById('max-time').value,
+                    // Note: Exclude Negatives and Max Difficulty settings are not saved/loaded in this version
+                };
+                localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+                updateRestartPrompt(settings);
+            } catch (e) {
+                console.warn("Could not save settings to Local Storage:", e);
+            }
+        }
+        
+        function loadSettings() {
+            try {
+                const settingsJson = localStorage.getItem(SETTINGS_STORAGE_KEY);
+                const settings = settingsJson ? JSON.parse(settingsJson) : {};
+                
+                if (settings.op) $operationType.value = settings.op;
+                if (settings.minD) document.getElementById('min-digits').value = settings.minD;
+                if (settings.maxD) document.getElementById('max-digits').value = settings.maxD;
+                if (settings.terms) document.getElementById('num-terms').value = settings.terms;
+                if (settings.maxT) document.getElementById('max-time').value = settings.maxT;
+                
+                updateRestartPrompt(settings);
+            } catch (e) {
+                console.warn("Could not load settings from Local Storage:", e);
+            }
+        }
+
+        function updateRestartPrompt(settings) {
+            if (settings.op) {
+                const opName = $operationType.options[$operationType.selectedIndex].text;
+                $restartPrompt.textContent = `Last run: ${opName} (${settings.minD}-${settings.maxD}D, ${settings.terms} terms, ${settings.maxT}s).`;
+            }
+        }
+        
         function loadHistory() {
             try {
                 const historyJson = localStorage.getItem(HISTORY_STORAGE_KEY);
                 const allHistory = historyJson ? JSON.parse(historyJson) : [];
                 
-                // Sort history from newest to oldest
                 allHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
                 let totalSolved = 0;
+                let totalAttempted = 0; 
                 let totalTimeSeconds = 0;
+                let fastestQuizTime = Infinity;
 
                 allHistory.forEach(data => {
                     totalSolved += parseInt(data.score || 0);
                     totalTimeSeconds += parseFloat(data.timeUsed || 0);
+                    totalAttempted += parseInt(data.numProblems || 0);
+                    
+                    if (data.numProblems >= 10 && data.score === data.numProblems) {
+                        const time = parseFloat(data.timeUsed);
+                        if (time < fastestQuizTime) {
+                            fastestQuizTime = time;
+                        }
+                    }
                 });
 
                 const totalTimeMinutes = (totalTimeSeconds / 60).toFixed(0);
 
-                // Prepare limited history for the table (last 10)
                 const tableHistory = allHistory.slice(0, 10);
                 
-                renderHistory(tableHistory, { totalSolved, totalTime: totalTimeMinutes });
-                renderChart(allHistory); // Chart uses the full history
+                const totals = { 
+                    totalSolved, 
+                    totalAttempted,
+                    totalTime: totalTimeMinutes,
+                    fastestQuiz: fastestQuizTime === Infinity ? 'N/A' : `${fastestQuizTime.toFixed(0)}s`,
+                };
+
+                renderHistory(tableHistory, totals);
+                renderChart(allHistory); 
 
                 if (allHistory.length > 0) {
                     $exportCsvButton.disabled = false;
@@ -376,6 +460,7 @@
                 console.error("Error loading history from localStorage:", error);
                 $historyLoading.textContent = "History persistence failed in this browser.";
                 $totalSolvedDisplay.textContent = 'N/A';
+                $totalAttemptedDisplay.textContent = 'N/A';
                 $totalTimeDisplay.textContent = 'N/A';
             }
         }
@@ -385,12 +470,10 @@
                 const historyJson = localStorage.getItem(HISTORY_STORAGE_KEY);
                 const allHistory = historyJson ? JSON.parse(historyJson) : [];
                 
-                // Add timestamp before saving
                 stats.timestamp = new Date().toISOString(); 
                 
                 allHistory.push(stats);
 
-                // Keep the history manageable in size (e.g., last 200 entries)
                 if (allHistory.length > 200) {
                      allHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                      allHistory.splice(200);
@@ -399,7 +482,6 @@
                 localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(allHistory));
                 console.log("Result saved to localStorage.");
                 
-                // Reload history display immediately after saving
                 loadHistory(); 
 
             } catch (e) {
@@ -408,19 +490,16 @@
             }
         }
         
-        // Helper function for date formatting in history table
-        function formatDateForTable(isoDate) {
-            const date = new Date(isoDate);
-            const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' });
-            return { formattedDate, dayOfWeek };
+        // Reverted difficulty score calculation to simplified version (or removed)
+        function calculateDifficultyScore(op, numDigits, numTerms) {
+            return 'N/A'; 
         }
 
-
         function renderHistory(history, totals) {
-            // Update the Total Stats section
             $totalSolvedDisplay.textContent = totals.totalSolved.toLocaleString();
+            $totalAttemptedDisplay.textContent = totals.totalAttempted.toLocaleString();
             $totalTimeDisplay.textContent = totals.totalTime.toLocaleString();
+            $fastestQuizDisplay.textContent = totals.fastestQuiz;
 
 
             if (history.length === 0) {
@@ -430,9 +509,15 @@
             }
 
             const rows = history.map(item => {
-                const { formattedDate, dayOfWeek } = formatDateForTable(item.timestamp);
+                const date = new Date(item.timestamp);
+                const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' });
                 const fastestTime = item.fastestTime !== 'N/A' ? `<span class="text-accent">${item.fastestTime}s</span>` : 'N/A';
                 const accuracyColor = item.accuracy >= 90 ? 'text-accent' : item.accuracy >= 70 ? 'text-yellow-400' : 'text-error';
+
+                // Difficulty Score removed from display
+                const difficultyScore = item.difficultyScore || 'N/A';
+
 
                 return `
                     <tr class="border-t border-input-bg hover:bg-input-bg transition">
@@ -441,7 +526,7 @@
                         <td class="px-2 py-3 text-sm ${accuracyColor}">${item.score}/${item.numProblems}</td>
                         <td class="px-2 py-3 text-sm">${item.timeUsed}s</td>
                         <td class="px-2 py-3 text-sm">${fastestTime}</td>
-                        <td class="px-2 py-3 text-sm text-gray-400">${item.minDigits}-${item.maxDigits}D/${item.numTerms}T</td>
+                        <td class="px-2 py-3 text-sm text-gray-400">N/A</td> 
                     </tr>
                 `;
             }).join('');
@@ -468,17 +553,16 @@
         
         /**
          * Renders an SVG chart showing accuracy and average speed of the last 10 quizzes.
-         * @param {Array<Object>} history - The array of quiz results.
          */
         function renderChart(history) {
-            // Get last 10 quizzes that were NOT stopped early (stopped quizzes skew the data)
+            // Reverting to the simpler dual chart display for accuracy and speed
             const data = history.filter(item => item.title !== 'Challenge Stopped')
                                 .slice(0, 10).map(item => ({ 
                 accuracy: parseFloat(item.accuracy),
                 timeUsed: parseFloat(item.timeUsed),
                 numProblems: parseInt(item.numProblems),
                 op: item.operation,
-            })).reverse(); // Reverse so newest is on the right
+            })).reverse(); 
             
             if (data.length === 0) {
                 $accuracyChart.innerHTML = '<p class="text-gray-400 text-sm" id="chart-message">Complete a quiz to see your trend.</p>';
@@ -488,57 +572,31 @@
             $accuracyChart.innerHTML = '';
             
             const width = 300;
-            const height = 140;
+            const height = 120;
             const barCount = data.length;
             const barWidth = width / (barCount * 1.5);
             const gap = barWidth / 2;
             
-            // Calculate Average Time Per Problem (ATPP) and scale factor
             const atppData = data.map(item => item.timeUsed / item.numProblems);
-            const maxAtpp = Math.max(...atppData);
+            const maxAtpp = Math.max(...atppData) * 1.1; 
+            const minAtpp = Math.min(...atppData);
+            const rangeAtpp = maxAtpp - minAtpp;
             
-            let svgContent = `<svg viewBox="0 0 ${width} ${height}" class="w-full h-full">`;
-            
-            // X-axis label (Quiz Number)
-            svgContent += `<text x="${width / 2}" y="${height - 5}" font-size="8" fill="#9ca3af" text-anchor="middle">Quiz History (Latest on Right)</text>`;
-            
-            // ACCURACY (Green Bars)
-            // 50% line (reference)
-            const y50 = height - (height * 0.5) * 0.9;
-            svgContent += `<line x1="0" y1="${y50}" x2="${width}" y2="${y50}" stroke="#4b5563" stroke-dasharray="2" stroke-width="0.5" />`;
-            svgContent += `<text x="${width - 10}" y="${y50 - 2}" font-size="8" fill="#9ca3af" text-anchor="end">50%</text>`;
+            // --- CHART 1: ACCURACY ---
+            let svgAcc = `<svg viewBox="0 0 ${width} ${height / 2}" class="w-full h-1/2">`;
+            const hAcc = height / 2;
+            const y50 = hAcc - (hAcc * 0.5) * 0.9;
+            svgAcc += `<line x1="0" y1="${y50}" x2="${width}" y2="${y50}" stroke="#4b5563" stroke-dasharray="2" stroke-width="0.5" />`;
+            svgAcc += `<text x="${width - 10}" y="${y50 - 2}" font-size="8" fill="#9ca3af" text-anchor="end">50% Accuracy</text>`;
 
             data.forEach((item, index) => {
-                const barHeightAcc = (item.accuracy * 0.9); // Scale to fit within 90% of height
+                const barHeightAcc = item.accuracy * 0.9;
                 const x = index * (barWidth + gap) + (gap / 2);
-                const yAcc = height - barHeightAcc;
+                const yAcc = hAcc - barHeightAcc;
 
-                const atpp = atppData[index];
-                const normalizedAtpp = maxAtpp > 0 ? (atpp / maxAtpp) : 0;
-                
-                // Since lower ATPP (faster speed) is better, height should be inverse of normalizedAtpp
-                const barHeightSpeed = (1 - normalizedAtpp) * 0.9 * height;
-                const ySpeed = height - barHeightSpeed;
-                
-                const tooltipText = `Quiz ${index + 1} (${item.op}): Acc=${item.accuracy}%, Speed=${atpp.toFixed(1)}s`;
+                const tooltipText = `Quiz ${index + 1} (${item.op}): Acc=${item.accuracy}%, ATPP=${atppData[index].toFixed(1)}s`;
 
-                // Speed Bar (Yellow/Orange - Represents how close to max speed it was)
-                 svgContent += `<rect 
-                    x="${x}" 
-                    y="${ySpeed}" 
-                    width="${barWidth}" 
-                    height="${barHeightSpeed}" 
-                    class="chart-bar chart-bar-speed opacity-50" 
-                    rx="1"
-                    ry="1"
-                    data-tooltip="${tooltipText}"
-                    data-op="${item.op}"
-                    onmouseover="showTooltip(evt, '${tooltipText}')"
-                    onmouseout="hideTooltip()"
-                />`;
-
-                // Accuracy Bar (Green - Represents accuracy score)
-                svgContent += `<rect 
+                svgAcc += `<rect 
                     x="${x}" 
                     y="${yAcc}" 
                     width="${barWidth}" 
@@ -546,23 +604,56 @@
                     class="chart-bar chart-bar-acc" 
                     rx="2"
                     ry="2"
-                    data-tooltip="${tooltipText}"
-                    data-op="${item.op}"
                     onmouseover="showTooltip(evt, '${tooltipText}')"
                     onmouseout="hideTooltip()"
                 />`;
                 
-                // Accuracy Label
                 if (item.accuracy > 10) {
-                    svgContent += `<text x="${x + barWidth / 2}" y="${yAcc - 2}" font-size="8" fill="${item.accuracy == 100 ? '#34d399' : '#f3f4f6'}" text-anchor="middle">${item.accuracy}</text>`;
+                    svgAcc += `<text x="${x + barWidth / 2}" y="${yAcc - 2}" font-size="8" fill="${item.accuracy == 100 ? '#34d399' : '#f3f4f6'}" text-anchor="middle">${item.accuracy}</text>`;
                 }
             });
 
-            svgContent += `</svg>`;
-            $accuracyChart.innerHTML = svgContent;
+            svgAcc += `</svg>`;
+            
+            // --- CHART 2: ATPP (Average Time Per Problem) ---
+            let svgAtpp = `<svg viewBox="0 0 ${width} ${height / 2}" class="w-full h-1/2">`;
+            const hAtpp = height / 2;
+            svgAtpp += `<text x="${width - 10}" y="10" font-size="8" fill="#f59e0b" text-anchor="end">${maxAtpp.toFixed(1)}s (Slowest)</text>`;
+            svgAtpp += `<text x="${width - 10}" y="${hAtpp - 5}" font-size="8" fill="#34d399" text-anchor="end">${minAtpp.toFixed(1)}s (Fastest)</text>`;
+            
+            data.forEach((item, index) => {
+                const atpp = atppData[index];
+                
+                const normalizedHeight = rangeAtpp > 0 ? ((maxAtpp - atpp) / rangeAtpp) : 0.5;
+                const barHeightAtpp = normalizedHeight * (hAtpp * 0.9);
+                const yAtpp = hAtpp - barHeightAtpp;
+
+                const tooltipText = `Quiz ${index + 1} (${item.op}): Acc=${item.accuracy}%, ATPP=${atpp.toFixed(1)}s`;
+
+                 svgAtpp += `<rect 
+                    x="${index * (barWidth + gap) + (gap / 2)}" 
+                    y="${yAtpp}" 
+                    width="${barWidth}" 
+                    height="${barHeightAtpp}" 
+                    class="chart-bar chart-bar-speed" 
+                    rx="2"
+                    ry="2"
+                    onmouseover="showTooltip(evt, '${tooltipText}')"
+                    onmouseout="hideTooltip()"
+                />`;
+
+            });
+
+            svgAtpp += `</svg>`;
+
+            $accuracyChart.innerHTML = `
+                <div class="text-sm font-semibold text-gray-300 w-full px-2">Accuracy Trend (%)</div>
+                ${svgAcc}
+                <div class="text-sm font-semibold text-gray-300 w-full px-2 mt-2">Speed Trend (ATPP)</div>
+                ${svgAtpp}
+            `;
         }
         
-        // Tooltip functions for the chart
         window.showTooltip = function(evt, text) {
             $chartTooltip.textContent = text;
             $chartTooltip.style.left = (evt.clientX + 10) + 'px';
@@ -575,10 +666,6 @@
         };
 
 
-        /**
-         * Converts the history array to CSV format and triggers a download.
-         * @param {Array<Object>} history - The array of quiz results.
-         */
         function downloadHistoryAsCSV(history) {
             if (history.length === 0) {
                 console.warn('No history data to export!'); 
@@ -586,9 +673,9 @@
             }
 
             const header = [
-                "Date", "Day", "Operation", "Score", "Total Problems", 
+                "Date", "Day", "Operation", "Score (Correct)", "Total Problems (Attempted)", 
                 "Accuracy (%)", "Time Used (s)", "Fastest Correct Time (s)", 
-                "Min Digits", "Max Digits", "Num Terms"
+                "Min Digits", "Max Digits", "Num Terms", "Fastest Quiz Time (s)"
             ].join(',');
             
             const csvRows = history.map(item => {
@@ -599,19 +686,24 @@
                 const fastestTime = item.fastestTime !== 'N/A' ? item.fastestTime : '';
                 const timeUsed = item.timeUsed;
                 const accuracy = item.accuracy;
+                
+                const isFastestQuiz = item.numProblems >= 10 && item.score === item.numProblems;
+                const fastestQuiz = isFastestQuiz ? item.timeUsed : '';
+                // Difficulty Score removed from CSV logic
 
                 return [
                     `"${formattedDate}"`,
                     `"${dayOfWeek}"`,
                     `"${item.operation}"`,
                     item.score,
-                    item.numProblems,
+                    item.numProblems, 
                     accuracy,
                     timeUsed,
                     fastestTime,
                     item.minDigits || 'N/A',
                     item.maxDigits,
-                    item.numTerms
+                    item.numTerms,
+                    fastestQuiz
                 ].join(',');
             });
 
@@ -619,7 +711,6 @@
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             
-            // Trigger download
             const link = document.createElement('a');
             link.setAttribute('href', url);
             link.setAttribute('download', 'mental_math_history.csv');
@@ -628,35 +719,26 @@
             link.click();
             document.body.removeChild(link);
             
-            // Show feedback
             $feedback.textContent = 'History exported to CSV!';
             $feedback.className = 'text-center text-xl h-6 text-accent font-semibold';
             setTimeout(() => $feedback.textContent = '', 3000);
         }
         
         // --- Gemini API Logic ---
-        const apiKey = ""; // API key is provided by the environment
+        const apiKey = ""; 
         const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
-        /**
-         * Utility function for exponential backoff on fetch calls.
-         */
         async function fetchWithBackoff(apiCall, maxRetries = 5, delay = 1000) {
             for (let i = 0; i < maxRetries; i++) {
                 try {
                     return await apiCall();
                 } catch (error) {
                     if (i === maxRetries - 1) throw error;
-                    // Do not log the retry
                     await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
                 }
             }
         }
 
-        /**
-         * Calls Gemini API to get a mental math strategy.
-         * @param {Object} problem - The current math problem object.
-         */
         async function getStrategyTip(problem) {
             $strategyTipOutput.innerHTML = `<p class="text-accent animate-pulse">Analyzing problem and fetching strategy...</p>`;
             $getStrategyTipButton.disabled = true;
@@ -666,11 +748,34 @@
             const minNumber = Math.min(...problem.numbers);
             const maxNumber = Math.max(...problem.numbers);
             
-            const operationName = op === '+' ? (numTerms > 2 ? 'column addition' : 'binary addition') : op === '-' ? (numTerms > 2 ? 'column subtraction' : 'binary subtraction') : op === '*' ? 'multiplication' : 'division';
+            let operationName;
+            let example;
+
+            switch (op) {
+                case 'sq':
+                    operationName = 'squaring a number';
+                    example = `The number to square is between ${minNumber} and ${maxNumber}.`;
+                    break;
+                case 'tbl':
+                    operationName = 'multiplication tables';
+                    example = `The first factor is between 1 and 12, and the second factor is between ${minNumber} and ${maxNumber}.`;
+                    break;
+                case '+':
+                case '-':
+                    operationName = numTerms > 2 ? `column ${op === '+' ? 'addition' : 'subtraction'}` : `binary ${op === '+' ? 'addition' : 'subtraction'}`;
+                    example = `Numbers are between ${minNumber} and ${maxNumber}.`;
+                    break;
+                case '*':
+                case '/':
+                    operationName = op === '*' ? 'binary multiplication' : 'binary division';
+                    example = `Numbers are between ${minNumber} and ${maxNumber}.`;
+                    break;
+                default:
+                    operationName = 'general arithmetic';
+                    example = `The current operation involves terms between ${minNumber} and ${maxNumber}.`;
+            }
             
-            const difficultyContext = `${operationName} problems with numbers between ${minNumber} and ${maxNumber}.`;
-            
-            let userQuery = `Provide a single, specific, and actionable mental math strategy for solving ${difficultyContext}. The strategy should be concise (1-2 sentences) and highly focused on the calculation type.`;
+            let userQuery = `Provide a single, specific, and actionable mental math strategy for solving ${operationName}. The strategy should be concise (1-2 sentences) and highly focused. ${example}`;
             
             const systemPrompt = "You are a world-class mental math coach. Provide a powerful, concise mental math technique for the given arithmetic problem type. Do not provide greetings or conversational filler; just state the strategy.";
 
@@ -716,12 +821,13 @@
             let numbers = [];
             let result;
 
+            // Mix logic updated to include new operations
             if (rawOperator === 'mix') {
-                rawOperator = ['+', '-', '*', '/'][Math.floor(Math.random() * 4)];
+                rawOperator = ['+', '-', '*', '/', 'sq', 'tbl'][Math.floor(Math.random() * 6)];
             }
             
-            // Multiplication and Division must be binary (2-term) for the current display format
-            if (rawOperator === '*' || rawOperator === '/') {
+            // Multiplication, Division, Squares, and Tables must be binary (2-term logic)
+            if (['*', '/', 'sq', 'tbl'].includes(rawOperator)) {
                 currentNumTerms = 2; 
             }
 
@@ -734,9 +840,13 @@
 
             } else if (rawOperator === '-') {
                 // Column Subtraction (running subtraction)
+                const excludeNegatives = $excludeNegatives.checked; 
                 
-                // Start with a large number A
-                let numA = getRandomNumber(maxDigits, maxDigits + 1); // Start with slightly larger digits for the base
+                let startingMinDigits = maxDigits; 
+                if (maxDigits >= 2 && currentNumTerms > 2) {
+                     startingMinDigits = maxDigits + 1; 
+                }
+                let numA = getRandomNumber(startingMinDigits, maxDigits + 1); 
                 numbers.push(numA);
                 result = numA;
 
@@ -744,9 +854,7 @@
                 for (let i = 1; i < currentNumTerms; i++) {
                     let numB = getRandomNumber(minDigits, maxDigits);
                     
-                    // Logic to keep result non-negative when possible
-                    if (result < numB) {
-                        // Ensure a valid (though small) number is subtracted
+                    if (excludeNegatives && result < numB) { 
                         numB = Math.floor(result / 2) + 1; 
                         if (numB <= 0) numB = 1; 
                     }
@@ -755,6 +863,17 @@
                     result -= numB;
                 }
                 
+            } else if (rawOperator === 'sq') { // SQUARES
+                let numA = getRandomNumber(minDigits, maxDigits);
+                result = numA * numA;
+                numbers = [numA]; // Single number, treated as 2-term logic for flow
+                currentNumTerms = 1; // Only one base number in display
+            } else if (rawOperator === 'tbl') { // TABLES
+                let numA = Math.floor(Math.random() * 12) + 1; // Table factor 1 to 12
+                let numB = getRandomNumber(minDigits, maxDigits);
+                
+                result = numA * numB;
+                numbers = [numA, numB];
             } else { // Multiplication or Division (enforced 2-term)
                 let numA = getRandomNumber(minDigits, maxDigits);
                 let numB = getRandomNumber(minDigits, maxDigits);
@@ -775,7 +894,11 @@
                 }
             }
             
-            const displayOperator = rawOperator === '/' ? '÷' : rawOperator === '*' ? '×' : rawOperator;
+            const displayOperator = rawOperator === '/' ? '÷' : 
+                                    rawOperator === '*' ? '×' :
+                                    rawOperator === 'sq' ? '²' : 
+                                    rawOperator === 'tbl' ? '×' :
+                                    rawOperator;
             
             return { numbers, sum: result, operator: displayOperator, rawOperator: rawOperator, numTermsUsed: currentNumTerms };
         }
@@ -786,22 +909,43 @@
             const numbers = currentProblem.numbers;
             const operator = currentProblem.operator;
             const numTermsUsed = currentProblem.numTermsUsed;
+            const correctAnswerLength = String(currentProblem.sum).length; 
 
             $problemDisplay.innerHTML = '';
-            $problemDisplay.className = 'bg-primary-bg p-4 mb-4 text-3xl sm:text-4xl text-white';
+            $problemDisplay.className = 'bg-primary-bg p-4 mb-4 text-3xl sm:text-4xl text-white relative';
 
             const container = document.createElement('div');
             container.className = 'problem-container px-4 py-2 leading-tight';
 
+            // Set dynamic max length for input (Kept)
+            $answerInput.maxLength = correctAnswerLength;
+            
+            // Dynamic Problem Counter (Kept)
+            $qNumberDisplay.textContent = `Q${currentProblemIndex}`;
+            $problemDisplay.prepend($qNumberDisplay);
+
+            if (currentProblem.rawOperator === 'sq') { // SQUARES DISPLAY
+                const numA = numbers[0];
+                const opColor = 'text-yellow-400';
+                
+                container.innerHTML = `
+                    <div class="problem-row font-mono justify-end">
+                        <span class="operator text-primary-bg opacity-0">.</span>
+                        <span class="number-box text-5xl">${numA}</span>
+                        <sup class="${opColor} text-3xl font-bold ml-1 align-top">2</sup>
+                    </div>
+                    <div class="addition-line w-full"></div>
+                `;
+            }
             // Check if it's multi-term addition OR multi-term subtraction (Num Terms > 2)
-            if (numTermsUsed > 2) {
+            else if (numTermsUsed > 2) {
                 // Multi-term Column (Addition or Subtraction)
                 const columnOperator = currentProblem.rawOperator;
-                const opDisplay = columnOperator === '+' ? '+' : '−'; // Use minus sign for subtraction column
+                const opDisplay = columnOperator === '+' ? '+' : '−';
                 const opColor = columnOperator === '+' ? 'text-accent' : 'text-subtraction-color';
 
                 const maxLen = numbers.reduce((max, num) => Math.max(max, String(num).length), 0);
-                const lastIndex = numbers.length - 1; // Get the index of the last number
+                const lastIndex = numbers.length - 1;
                 
                 numbers.forEach((num, index) => {
                     const numString = String(num);
@@ -812,7 +956,6 @@
                     
                     const opSpan = document.createElement('span');
 
-                    // Show operator only on the second-to-last number (index L-2).
                     const isOperatorRow = index === lastIndex - 1; 
 
                     opSpan.textContent = opDisplay;
@@ -830,7 +973,7 @@
                 container.innerHTML += `<div class="addition-line w-full"></div>`;
                 
             } else {
-                // Binary (2-term) Operation: +, -, *, /
+                // Binary (2-term) Operation: +, -, *, /, Tbl
                 const numA = numbers[0];
                 const numB = numbers[1];
                 const maxLen2 = Math.max(String(numA).length, String(numB).length);
@@ -840,7 +983,7 @@
 
                 const opColor = currentProblem.rawOperator === '+' ? 'text-accent' : 
                                 currentProblem.rawOperator === '-' ? 'text-subtraction-color' :
-                                currentProblem.rawOperator === '*' ? 'text-multiplication-color' :
+                                ['*', 'tbl'].includes(currentProblem.rawOperator) ? 'text-multiplication-color' :
                                 'text-division-color';
                                 
                 container.innerHTML = `
@@ -862,111 +1005,109 @@
             $answerInput.value = '';
             $answerInput.focus();
             
-            // RE-ENABLE CONTROLS for the new problem
             $answerInput.disabled = false;
         }
 
         function updateStats() {
+            const now = Date.now();
+            const totalElapsedTime = (now - startTime) / 1000;
+            const remaining = maxTime - totalElapsedTime;
+            
+            // Fractional Timer Display (Reverted to standard seconds)
+            timeLeft = Math.max(0, remaining);
+            $timer.textContent = `Time: ${timeLeft.toFixed(0)}s`; 
+
+            // Countdown Bar removed (using timer color change instead)
+            if (timeLeft <= 10) {
+                 $timer.classList.add('text-error');
+                 $timer.classList.remove('text-accent');
+             } else {
+                 $timer.classList.add('text-accent');
+                 $timer.classList.remove('text-error');
+             }
+
+
             $progressTracker.textContent = `Progress: ${currentProblemIndex}/${numProblems}`;
-            $timer.textContent = `Time: ${timeLeft}s`;
         }
 
         // --- Mistake Analysis Function ---
-
         function analyzeMistakes() {
-            const errorCounts = { '+': 0, '-': 0, '*': 0, '/': 0, total: 0 };
-            const opMap = { '+': 'Addition', '-': 'Subtraction', '*': 'Multiplication', '/': 'Division' };
+            const errorCounts = { '+': 0, '-': 0, '*': 0, '/': 0, 'sq': 0, 'tbl': 0, 'mix': 0, total: 0 };
+            const opMap = { '+': 'Addition', '-': 'Subtraction', '*': 'Multiplication', '/': 'Division', 'sq': 'Squares', 'tbl': 'Tables' };
             let summaryHtml = '';
 
-            // 1. Count errors by type
             results.forEach(item => {
                 if (item.rawOperator && errorCounts.hasOwnProperty(item.rawOperator)) {
                     if (!item.isCorrect) {
                         errorCounts[item.rawOperator]++;
                         errorCounts.total++;
                     }
+                } else if (item.operation === 'mix' && !item.isCorrect) {
+                     errorCounts.mix++;
+                     errorCounts.total++;
                 }
             });
             
-            // 2. Determine weakest area
             let weakestOp = null;
             let maxErrors = -1;
             
             for (const op in errorCounts) {
-                if (op !== 'total' && errorCounts[op] > maxErrors) {
+                if (op !== 'total' && op !== 'mix' && errorCounts[op] > maxErrors) {
                     maxErrors = errorCounts[op];
                     weakestOp = op;
                 }
             }
             
-            // 3. Generate summary text
             if (errorCounts.total === 0) {
                 summaryHtml += `<p class="text-accent font-bold">**Outstanding performance!** You completed the challenge with **100% accuracy**.</p>`;
             } else {
                 if (weakestOp && maxErrors > 0) {
                      const opName = opMap[weakestOp];
                      summaryHtml += `<p class="text-error font-bold">Your highest error rate (**${maxErrors} errors**) was in **${opName}**.</p>`;
-                     summaryHtml += `<p class="text-gray-300 text-sm mt-1">Recommendation: Focus on ${opName} in your next few challenges to solidify the rule or column alignment.</p>`;
-                     
-                     // Add Quick Challenge Button
+                     summaryHtml += `<p class="text-gray-300 text-sm mt-1">Recommendation: Focus on ${opName} in your next few challenges.</p>`;
                      summaryHtml += `<button data-op="${weakestOp}" class="quick-challenge-button mt-3 py-2 px-4 bg-error text-text-color font-bold rounded-lg hover:bg-red-600 transition text-sm shadow-md w-full">Practice ${opName} Now</button>`;
                 }
             }
-
-            // 4. Check for speed issues (simple heuristic: average time is 2.5x slower than fastest)
-            if (correctProblemTimes.length > 2) {
-                const averageCorrectTime = correctProblemTimes.reduce((a, b) => a + b, 0) / correctProblemTimes.length;
-                const fastestTime = Math.min(...correctProblemTimes);
-                
-                if (averageCorrectTime > fastestTime * 2.5) { 
-                    summaryHtml += `<p class="text-yellow-400 mt-3 font-bold">**Speed Note:** There was a large variance in your completion times.</p>`;
-                    summaryHtml += `<p class="text-gray-300 text-sm mt-1">Recommendation: Try to maintain a consistent pace rather than rushing some problems and getting stuck on others.</p>`;
-                }
-            }
             
-            // 5. Dynamic Difficulty Check (Performance Reward)
-            if (recentCorrectTimes.length >= 3) {
-                 const recentAvg = recentCorrectTimes.reduce((a, b) => a + b, 0) / recentCorrectTimes.length;
-                 const SPEED_THRESHOLD = 2.5; // Average time to solve 3 problems must be under 2.5s
-                 
-                 if (recentAvg < SPEED_THRESHOLD && maxDigits < 6) {
-                    const nextDigits = maxDigits + 1;
-                    summaryHtml += `
-                        <div class="mt-4 pt-3 border-t border-accent/50">
-                            <h4 class="font-bold text-accent">✨ Level Up Opportunity!</h4>
-                            <p class="text-gray-300 text-sm mt-1">You solved 3 problems in a row quickly (Avg: ${recentAvg.toFixed(2)}s). Try increasing your digit count for the next challenge.</p>
-                            <button id="try-harder" data-next-digits="${nextDigits}" 
-                                class="mt-3 py-2 px-4 bg-accent text-primary-bg font-bold rounded-lg hover:bg-emerald-400 transition text-sm shadow-md w-full">
-                                Try Harder (Max Digits $\rightarrow$ ${nextDigits})
-                            </button>
-                        </div>
-                    `;
-                 }
-            }
-
-
+            // Difficulty Scaling logic removed
+            // Fastest Problem Review removed
+            
             return { summaryHtml };
         }
 
         // --- Game Flow ---
 
         function startGame() {
-            // 1. Get Settings
-            maxTime = parseInt(document.getElementById('max-time').value);
-            numProblems = parseInt(document.getElementById('num-problems').value);
-            numTerms = parseInt(document.getElementById('num-terms').value);
-            minDigits = parseInt(document.getElementById('min-digits').value); // NEW
-            maxDigits = parseInt(document.getElementById('max-digits').value);
+            console.log("Starting Game...");
+            
+            // 1. Get Settings with Robust Defaulting (FIX: Ensures NaN inputs default to valid numbers)
+            maxTime = parseInt(document.getElementById('max-time').value) || 60;
+            numProblems = parseInt(document.getElementById('num-problems').value) || 10;
+            numTerms = parseInt(document.getElementById('num-terms').value) || 2;
+            minDigits = parseInt(document.getElementById('min-digits').value) || 1;
+            maxDigits = parseInt(document.getElementById('max-digits').value) || 6;
             operationType = $operationType.value;
             
-            if (minDigits > maxDigits) {
-                 minDigits = maxDigits;
-                 document.getElementById('min-digits').value = maxDigits;
-            }
+            // Re-assign values in case they defaulted, so validation checks against the intended number
+            document.getElementById('max-time').value = maxTime;
+            document.getElementById('num-problems').value = numProblems;
+            document.getElementById('num-terms').value = numTerms;
+            document.getElementById('min-digits').value = minDigits;
+            document.getElementById('max-digits').value = maxDigits;
             
-            // Validation (basic check)
-            if (maxTime < 10 || numProblems < 1 || minDigits < 1 || maxDigits < 1) {
-                $feedback.textContent = 'Please check your settings. Values must be reasonable.';
+            // Validation (FIX: Added more descriptive error messages)
+            if (maxTime < 10) {
+                $feedback.textContent = 'Time Limit must be at least 10 seconds.';
+                $feedback.className = 'text-center text-xl h-6 text-error';
+                return;
+            }
+            if (numProblems < 1) {
+                $feedback.textContent = 'Total Problems must be at least 1.';
+                $feedback.className = 'text-center text-xl h-6 text-error';
+                return;
+            }
+            if (minDigits < 1 || maxDigits < 1 || minDigits > maxDigits) {
+                $feedback.textContent = 'Check Digits: Min must be 1+ and Max must be equal to or greater than Min.';
                 $feedback.className = 'text-center text-xl h-6 text-error';
                 return;
             }
@@ -976,30 +1117,32 @@
                  return;
             }
 
+            saveSettings();
+            startTime = Date.now(); 
 
             // 2. Setup State
             currentProblemIndex = 0;
             score = 0;
             timeLeft = maxTime;
-            results = []; // Reset results for new game
+            results = [];
             correctProblemTimes = [];
-            recentCorrectTimes = []; // Reset recent correct times
+            recentCorrectTimes = [];
             isGameRunning = true;
 
             // 3. Update UI
             $settingsPanel.classList.add('hidden');
             $gameArea.classList.remove('hidden');
-            $answerInput.disabled = false; // Enable input
+            $answerInput.disabled = false;
             $stopButton.disabled = false; 
             $feedback.textContent = '';
             
-            // Reset strategy tip area
             $getStrategyTipButton.disabled = true;
             $strategyTipOutput.innerHTML = `<p class="text-gray-400 text-sm">Solve a problem to get a custom mental math strategy.</p>`;
 
-            updateStats();
+            $timer.textContent = `Time: ${maxTime}s`;
+            $timer.className = 'text-accent';
 
-            // 4. Start Timer
+            // 4. Start Timer (Reverted to simpler single interval)
             startTimer();
 
             // 5. Generate First Problem
@@ -1008,23 +1151,26 @@
 
         function startTimer() {
             if (timerInterval) clearInterval(timerInterval);
-            
-            if (!isGameRunning) return; // Prevent timer logic if game is already stopped
+            if (!isGameRunning) return; 
 
             timerInterval = setInterval(() => {
-                timeLeft--;
+                // Pause on Lost Focus logic removed
+                
+                const now = Date.now();
+                const totalElapsedTime = (now - startTime) / 1000;
+                let remaining = maxTime - totalElapsedTime;
 
-                if (timeLeft <= 0) {
+                if (remaining <= 0) {
                     clearInterval(timerInterval);
                     endGame('Time Up!');
-                } else {
-                    updateStats();
-                    if (timeLeft <= 10) {
-                        $timer.className = 'text-error';
-                    } 
+                    return;
                 }
-            }, 1000);
+
+                timeLeft = remaining;
+                updateStats();
+            }, 1000); // Check every second
         }
+
 
         function nextProblem() {
             if (currentProblemIndex >= numProblems || !isGameRunning) {
@@ -1039,82 +1185,86 @@
             $answerInput.focus();
             updateStats();
             
-            // Reset strategy tip button state for the new problem
             $getStrategyTipButton.disabled = false;
             $getStrategyTipButton.onclick = () => getStrategyTip(currentProblem);
-            
-            // RE-ENABLE CONTROLS for the new problem
-            // NOTE: answer input enabled in renderProblem()
         }
 
         function submitAnswer(isCorrect, userAnswer) {
             if (!isGameRunning || $answerInput.disabled) return; 
 
-            // IMMEDIATELY LOCK CONTROLS
             $answerInput.disabled = true;
 
             const timeTaken = (Date.now() - problemStartTime) / 1000;
             const correctAnswer = currentProblem.sum;
             
-            // Generate problem string for storage/review
             const opSymbol = currentProblem.rawOperator === '+' ? ' + ' : 
                              currentProblem.rawOperator === '*' ? ' × ' :
                              currentProblem.rawOperator === '/' ? ' ÷ ' :
+                             currentProblem.rawOperator === 'sq' ? '²' :
+                             currentProblem.rawOperator === 'tbl' ? ' × ' :
                              ' − ';
                              
-            const problemString = currentProblem.numbers.join(opSymbol);
-
+            // Updated problem string generation for Squares
+            const problemString = currentProblem.rawOperator === 'sq' ? `${currentProblem.numbers[0]}${opSymbol}` : currentProblem.numbers.join(opSymbol);
 
             const result = {
-                id: currentProblemIndex, // Added ID for review
+                id: currentProblemIndex,
                 problem: problemString,
                 correctAnswer: correctAnswer,
                 userAnswer: userAnswer,
                 isCorrect: isCorrect,
                 timeTaken: timeTaken.toFixed(2),
-                rawOperator: currentProblem.rawOperator, // Added for analysis
+                rawOperator: currentProblem.rawOperator,
+                // Difficulty Score removed
             };
             results.push(result);
+
+            let feedbackClass = '';
+            let opColorClass = '';
+            switch (currentProblem.rawOperator) {
+                case '+': opColorClass = 'text-accent'; break;
+                case '-': opColorClass = 'text-subtraction-color'; break;
+                case '*': 
+                case 'tbl': 
+                    opColorClass = 'text-multiplication-color'; break;
+                case '/': opColorClass = 'text-division-color'; break;
+                case 'sq': opColorClass = 'text-yellow-400'; break;
+                default: opColorClass = 'text-white';
+            }
+
 
             if (isCorrect) {
                 score++;
                 correctProblemTimes.push(timeTaken);
+                // Recent correct times for difficulty scaling removed
                 
-                // Track recent correct times for difficulty scaling
-                recentCorrectTimes.push(timeTaken);
-                if (recentCorrectTimes.length > 3) recentCorrectTimes.shift(); // Keep last 3
-                
-                $feedback.textContent = 'Correct!';
-                $feedback.className = 'text-center text-xl h-6 text-accent font-semibold';
+                $feedback.innerHTML = `Correct!`; 
+                feedbackClass = `text-center text-xl h-6 text-accent font-semibold`;
             } else {
-                // Reset recent correct times on incorrect answer
-                recentCorrectTimes = [];
-                // FIX: Show correct answer briefly, then transition
-                $feedback.innerHTML = `Incorrect! Answer: <span class="text-accent font-bold">${correctAnswer}</span>`;
-                $feedback.className = 'text-center text-xl h-6 text-error font-semibold';
+                // Recent correct times reset removed
+                $feedback.innerHTML = `Incorrect! Answer: <span class="${opColorClass} font-bold">${correctAnswer}</span>`;
+                feedbackClass = `text-center text-xl h-6 text-error font-semibold`;
             }
             
-            // Enable strategy button after submission
+            $feedback.className = feedbackClass;
             $getStrategyTipButton.disabled = false;
             $getStrategyTipButton.onclick = () => getStrategyTip(currentProblem);
 
-            // FIX: INSTANTLY change to the next question
             nextProblem(); 
         }
         
-        // NEW FUNCTION: Checks the input and triggers submitAnswer instantly if correct
         function checkAndSubmitOnInput() {
             if (!isGameRunning || $answerInput.disabled || !currentProblem) return;
 
             const inputVal = $answerInput.value.trim();
             const correctAnswer = currentProblem.sum;
             
-            // Must be a valid number and completely match the correct answer
+            // Use Math.abs(currentProblem.sum) for correct length comparison for safety if negatives were allowed
+            const expectedLength = String(Math.abs(correctAnswer)).length + (correctAnswer < 0 ? 1 : 0);
+            
             if (inputVal === String(correctAnswer)) {
-                // Trigger submission logic
                 submitAnswer(true, parseInt(inputVal));
-            } else if (inputVal.length > String(correctAnswer).length) {
-                // If the user overshoots the expected length, mark it incorrect and submit (to prevent infinite waiting)
+            } else if (inputVal.length >= expectedLength) { // Check for overshoot using >=
                 submitAnswer(false, parseInt(inputVal));
             }
         }
@@ -1123,41 +1273,42 @@
         function endGame(title) {
             isGameRunning = false;
             if (timerInterval) clearInterval(timerInterval);
-            // $submitButton.disabled = true; // Submit button is gone
+
             $answerInput.disabled = true;
             $stopButton.disabled = true;
-            $getStrategyTipButton.disabled = true; // Disable strategy button at end of game
+            $getStrategyTipButton.disabled = true; 
 
-            const totalTimeElapsed = maxTime - timeLeft;
-            const problemsAttempted = results.length; // Use results.length for accurate attempted count
+            const totalTimeElapsed = (Date.now() - startTime) / 1000;
+            const problemsAttempted = results.length;
             const actualProblems = title === 'Challenge Stopped' ? problemsAttempted : numProblems;
             
             const accuracy = actualProblems > 0 ? ((score / actualProblems) * 100).toFixed(0) : 0;
             
-            let timeUsed = title === 'Time Up!' ? maxTime : totalTimeElapsed;
+            let timeUsed = title === 'Time Up!' ? maxTime : totalTimeElapsed.toFixed(0);
             
             const fastestTime = correctProblemTimes.length > 0 
                 ? Math.min(...correctProblemTimes).toFixed(2)
                 : 'N/A';
-            
+                
+            // Fastest Problem Review removed
+
             const stats = {
-                title: title, // Added title to stats for better filtering
-                timestamp: new Date().toISOString(), // Use local ISO date string for consistency
+                title: title,
+                timestamp: new Date().toISOString(),
                 operation: operationType,
-                score: score,
-                numProblems: actualProblems, // Only save based on problems attempted or set
+                score: score, 
+                numProblems: actualProblems,
                 accuracy: accuracy,
-                timeUsed: timeUsed.toFixed(0),
+                timeUsed: timeUsed,
                 fastestTime: fastestTime,
-                minDigits: minDigits, // Save min digits
+                minDigits: minDigits,
                 maxDigits: maxDigits,
                 numTerms: numTerms,
+                // Difficulty Score removed
             };
 
-            // Run analysis
             const analysis = analyzeMistakes();
             
-            // --- Generate detailed mistake review for the main modal ---
             const incorrectResults = results.filter(item => !item.isCorrect);
             let mistakesReviewHtml = '';
 
@@ -1167,7 +1318,7 @@
                         <h4 class="font-bold text-error mb-2">Mistakes (Answered ${incorrectResults.length} Incorrectly):</h4>
                         ${incorrectResults.map(item => `
                             <div class="p-2 border border-error/50 rounded bg-error-bg/50">
-                                <p class="font-semibold">${item.problem} = ?</p>
+                                <p class="font-semibold">${item.problem}</p>
                                 <p class="text-xs">You put: <span class="text-error font-bold">${item.userAnswer || 'N/A'}</span></p>
                                 <p class="text-xs">Correct: <span class="text-accent font-bold">${item.correctAnswer}</span></p>
                             </div>
@@ -1177,12 +1328,12 @@
             }
 
 
-            // Save results to Local Storage
             saveResult(stats);
 
             $modalTitle.textContent = title;
             $modalMessage.innerHTML = `
-                <p>Problems Solved: <span class="text-accent font-bold">${stats.score} / ${stats.numProblems}</span></p>
+                <p>Questions Attempted: <span class="text-white font-bold">${stats.numProblems}</span></p>
+                <p>Correct Answers: <span class="text-accent font-bold">${stats.score}</span></p>
                 <p>Accuracy: <span class="text-accent font-bold">${stats.accuracy}%</span></p>
                 <p class="mt-4">Total Time Used: <span class="text-accent font-bold">${stats.timeUsed}s</span></p>
                 <p>Fastest Correct Answer: <span class="text-accent font-bold">${stats.fastestTime}s</span></p>
@@ -1192,58 +1343,34 @@
                     ${analysis.summaryHtml}
                 </div>
                 
-                ${mistakesReviewHtml} <!-- INSERTED DETAILED MISTAKES HERE -->
+                ${mistakesReviewHtml}
             `;
             $modal.classList.remove('hidden');
             
-            // Attach event listener to the dynamically created quick challenge buttons
             document.querySelectorAll('.quick-challenge-button').forEach(button => {
                 button.addEventListener('click', handleQuickChallenge);
             });
-            const $tryHarderButton = document.getElementById('try-harder');
-            if ($tryHarderButton) {
-                $tryHarderButton.addEventListener('click', handleTryHarder);
-            }
+            // Try Harder button logic removed
         }
         
-        // NEW: Handles the action for the Try Harder button
-        function handleTryHarder(event) {
-            const nextDigits = parseInt(event.target.getAttribute('data-next-digits'));
-            
-            // 1. Reset the game (closes modal, shows settings)
-            resetGame(); 
-            
-            // 2. Set the Max Digits input value
-            const $maxDigitsInput = document.getElementById('max-digits');
-            $maxDigitsInput.value = nextDigits;
-            
-            // 3. Provide feedback to the user
-            $feedback.textContent = `Difficulty increased! Max Digits is now **${nextDigits}**. Click 'Start Challenge'!`;
-            $feedback.className = 'text-center text-xl h-6 text-accent font-semibold';
-        }
-
         function handleQuickChallenge(event) {
             const op = event.target.getAttribute('data-op');
             if (op) {
-                // 1. Reset the game (closes modal, shows settings)
                 resetGame(); 
-                // 2. Set the Operation dropdown to the weakest operation
                 document.getElementById('operation-type').value = op;
-                // 3. Provide feedback to the user
-                const opName = op === '+' ? 'Addition' : op === '-' ? 'Subtraction' : op === '*' ? 'Multiplication' : 'Division';
+                const opName = $operationType.options[$operationType.selectedIndex].text;
                 $feedback.textContent = `Settings updated for **${opName}** practice. Click 'Start Challenge'!`;
                 $feedback.className = 'text-center text-xl h-6 text-yellow-400 font-semibold';
             }
         }
 
-        // --- Problem Review Logic ---
-
+        // --- Problem Review Logic (Used by Review Problems) ---
         function renderProblemReview() {
-            $modal.classList.add('hidden'); // Hide main modal
-            $reviewList.innerHTML = '';
+            $modal.classList.add('hidden');
+            document.getElementById('review-list').innerHTML = '';
             
             if (results.length === 0) {
-                 $reviewList.innerHTML = `<p class="text-center text-gray-400">No problems were attempted in this session.</p>`;
+                 document.getElementById('review-list').innerHTML = `<p class="text-center text-gray-400">No problems were attempted in this session.</p>`;
                  $reviewModal.classList.remove('hidden');
                  return;
             }
@@ -1257,7 +1384,6 @@
                         <div class="flex-1 text-left">
                             <p class="text-lg font-semibold mb-1">Q${item.id}: ${item.problem}</p>
                             <p class="text-sm">Your Answer: <span class="font-bold">${item.userAnswer || 'N/A'}</span></p>
-                            <!-- FIX: Always show correct answer in the review modal for comparison -->
                             <p class="text-sm">Correct Answer: <span class="font-bold text-accent">${item.correctAnswer}</span></p>
                         </div>
                         <div class="flex-shrink-0 text-right">
@@ -1268,28 +1394,32 @@
                 `;
             }).join('');
             
-            $reviewList.innerHTML = reviewHtml;
+            document.getElementById('review-list').innerHTML = reviewHtml;
             $reviewModal.classList.remove('hidden');
         }
 
         function resetGame() {
-            // This function takes you back to the settings panel (home page)
+            saveSettings();
+            
+            if (timerInterval) clearInterval(timerInterval);
+
             $modal.classList.add('hidden');
             $reviewModal.classList.add('hidden'); 
             $gameArea.classList.add('hidden');
-            $settingsPanel.classList.remove('hidden'); // Shows the main settings panel
+            $settingsPanel.classList.remove('hidden'); 
+
             $timer.className = 'text-accent';
             $problemDisplay.innerHTML = '<p class="text-center text-lg text-gray-400">Press Start to begin.</p>';
-            $feedback.textContent = ''; // Clear game-related feedback
+            $feedback.textContent = ''; 
             $answerInput.value = '';
+            $qNumberDisplay.textContent = 'Q0'; 
+
+            loadSettings();
         }
         
-        // Removed toggleNumTermsInput and its listener to enable the input field full-time.
-
-
         // --- Event Listeners ---
         document.addEventListener('DOMContentLoaded', () => {
-            // Replaced setupFirebase with loadHistory which uses localStorage
+            loadSettings(); 
             loadHistory(); 
             
             $startButton.addEventListener('click', startGame);
@@ -1298,18 +1428,20 @@
             $reviewProblemsButton.addEventListener('click', renderProblemReview);
             $closeReviewModal.addEventListener('click', () => {
                 $reviewModal.classList.add('hidden');
-                $modal.classList.remove('hidden'); // Return to the main results modal
+                $modal.classList.remove('hidden'); 
             });
             
-            // NEW LISTENER for automatic submission on input
             $answerInput.addEventListener('input', checkAndSubmitOnInput);
             
-            // Initialize digit inputs and num terms control (SETTING DEFAULTS)
-            document.getElementById('max-time').value = 60;
-            document.getElementById('num-problems').value = 10;
-            document.getElementById('num-terms').value = 2; /* DEFAULT: 2 */
-            document.getElementById('min-digits').value = 1; /* DEFAULT: 1 */
-            document.getElementById('max-digits').value = 6; /* DEFAULT: 6 */
+            // Input change listeners for saving settings
+            document.getElementById('max-time').addEventListener('change', saveSettings);
+            document.getElementById('num-problems').addEventListener('change', saveSettings);
+            document.getElementById('num-terms').addEventListener('change', saveSettings);
+            document.getElementById('min-digits').addEventListener('change', saveSettings);
+            document.getElementById('max-digits').addEventListener('change', saveSettings);
+            document.getElementById('operation-type').addEventListener('change', saveSettings);
+            
+            // Removed Max Difficulty Toggle and Exclude Negatives listeners/logic
         });
 
     </script>
