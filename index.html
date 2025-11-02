@@ -221,6 +221,17 @@
                     Export to CSV
                 </button>
             </div>
+
+            <!-- NEW: Total Stats --><div id="total-stats" class="grid grid-cols-2 gap-4 mb-4 p-3 bg-primary-bg rounded-lg border border-input-bg">
+                <div class="text-center">
+                    <p class="text-xs text-gray-400 uppercase tracking-wider">Total Solved Questions</p>
+                    <p id="total-solved-display" class="text-3xl font-bold text-accent">0</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-xs text-gray-400 uppercase tracking-wider">Total Time Spent (Minutes)</p>
+                    <p id="total-time-display" class="text-3xl font-bold text-speed-color">0</p>
+                </div>
+            </div>
             <!-- Performance Chart Area --><div id="accuracy-chart" class="chart-container h-40 w-full mb-4 rounded-lg bg-primary-bg p-2 flex items-center justify-center">
                  <p class="text-gray-400 text-sm" id="chart-message">Complete a quiz to see your trend.</p>
             </div>
@@ -323,6 +334,11 @@
         const $exportCsvButton = document.getElementById('export-csv');
         const $accuracyChart = document.getElementById('accuracy-chart'); 
         
+        // NEW TOTAL STATS ELEMENTS
+        const $totalSolvedDisplay = document.getElementById('total-solved-display');
+        const $totalTimeDisplay = document.getElementById('total-time-display');
+
+        
         // GEMINI ELEMENTS
         const $getStrategyTipButton = document.getElementById('get-strategy-tip');
         const $strategyTipOutput = document.getElementById('strategy-tip-output');
@@ -344,6 +360,8 @@
                 $historyLoading.textContent = "History disabled (Canvas environment config missing).";
                 isAuthReady = false;
                 $exportCsvButton.disabled = true;
+                $totalSolvedDisplay.textContent = 'N/A';
+                $totalTimeDisplay.textContent = 'N/A';
                 return;
             }
 
@@ -366,9 +384,11 @@
                         console.log("Firebase authenticated. User ID:", userId);
                         loadHistory(); // Start loading history once authenticated
                     } else {
-                        isAuthReady = false;
-                        console.log("Firebase not authenticated.");
-                        $historyLoading.textContent = "Authentication failed. History unavailable.";
+                        userId = auth.currentUser?.uid || 'anonymous';
+                        isAuthReady = true; // Still mark as ready even if anonymous
+                        console.log("Firebase signed in anonymously. User ID:", userId);
+                        $historyLoading.textContent = "Signed in anonymously. History data is private.";
+                        loadHistory();
                     }
                 });
             } catch (error) {
@@ -404,24 +424,42 @@
         function loadHistory() {
             if (!isAuthReady) return;
 
+            // Use a higher limit for robust total calculations, but keep the table display limited to 10
+            const Q_LIMIT_FOR_TOTALS = 100; 
+
             const q = query(
                 collection(db, getCollectionPath()),
                 orderBy("timestamp", "desc"),
-                limit(10)
+                limit(Q_LIMIT_FOR_TOTALS)
             );
 
             onSnapshot(q, (snapshot) => {
-                const history = [];
+                const allHistory = [];
+                let totalSolved = 0;
+                let totalTime = 0;
+
                 snapshot.forEach((doc) => {
-                    history.push(doc.data());
+                    const data = doc.data();
+                    allHistory.push(data);
+                    // Aggregate totals from all fetched documents
+                    totalSolved += parseInt(data.score || 0);
+                    totalTime += parseFloat(data.timeUsed || 0);
                 });
-                renderHistory(history);
-                renderChart(history); // Render chart after loading history
+
+                // Prepare limited history for the table (last 10)
+                const tableHistory = allHistory.slice(0, 10);
+                
+                // Calculate total time in minutes
+                const totalTimeMinutes = (totalTime / 60).toFixed(0);
+
+                // Render both the limited history table and the grand totals
+                renderHistory(tableHistory, { totalSolved, totalTime: totalTimeMinutes });
+                renderChart(allHistory); // Chart uses the full fetched history (up to 100)
                 
                 // Enable/Disable CSV export button based on data availability
-                if (history.length > 0) {
+                if (allHistory.length > 0) {
                     $exportCsvButton.disabled = false;
-                    $exportCsvButton.onclick = () => downloadHistoryAsCSV(history); 
+                    $exportCsvButton.onclick = () => downloadHistoryAsCSV(allHistory); // Pass all history for CSV
                 } else {
                     $exportCsvButton.disabled = true;
                 }
@@ -431,9 +469,14 @@
             });
         }
 
-        function renderHistory(history) {
+        function renderHistory(history, totals) {
+            // Update the Total Stats section
+            $totalSolvedDisplay.textContent = totals.totalSolved.toLocaleString();
+            $totalTimeDisplay.textContent = totals.totalTime.toLocaleString();
+
+
             if (history.length === 0) {
-                $historyTable.innerHTML = `<p class="text-center text-gray-400">No results saved yet. Start a quiz!</p>`;
+                $historyTable.innerHTML = `<p class="text-center text-gray-400">No recent results saved yet. Start a quiz!</p>`;
                 $historyLoading.classList.add('hidden');
                 return;
             }
@@ -1099,7 +1142,8 @@
             } else {
                 // Reset recent correct times on incorrect answer
                 recentCorrectTimes = [];
-                $feedback.textContent = `Incorrect. The answer was ${correctAnswer}.`;
+                // FIX: Show correct answer briefly, then transition
+                $feedback.innerHTML = `Incorrect! Answer: <span class="text-accent font-bold">${correctAnswer}</span>`;
                 $feedback.className = 'text-center text-xl h-6 text-error font-semibold';
             }
             
@@ -1163,6 +1207,26 @@
 
             // Run analysis
             const analysis = analyzeMistakes();
+            
+            // --- Generate detailed mistake review for the main modal ---
+            const incorrectResults = results.filter(item => !item.isCorrect);
+            let mistakesReviewHtml = '';
+
+            if (incorrectResults.length > 0) {
+                mistakesReviewHtml = `
+                    <div class="mt-4 pt-4 border-t border-input-bg text-sm text-left space-y-2">
+                        <h4 class="font-bold text-error mb-2">Mistakes (Answered ${incorrectResults.length} Incorrectly):</h4>
+                        ${incorrectResults.map(item => `
+                            <div class="p-2 border border-error/50 rounded bg-error-bg/50">
+                                <p class="font-semibold">${item.problem} = ?</p>
+                                <p class="text-xs">You put: <span class="text-error font-bold">${item.userAnswer || 'N/A'}</span></p>
+                                <p class="text-xs">Correct: <span class="text-accent font-bold">${item.correctAnswer}</span></p>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
 
             // Save results to Firestore
             if (isAuthReady) {
@@ -1180,6 +1244,8 @@
                     <h4 class="font-bold text-white">Error Assessment:</h4>
                     ${analysis.summaryHtml}
                 </div>
+                
+                ${mistakesReviewHtml} <!-- INSERTED DETAILED MISTAKES HERE -->
             `;
             $modal.classList.remove('hidden');
             
@@ -1244,7 +1310,8 @@
                         <div class="flex-1 text-left">
                             <p class="text-lg font-semibold mb-1">Q${item.id}: ${item.problem}</p>
                             <p class="text-sm">Your Answer: <span class="font-bold">${item.userAnswer || 'N/A'}</span></p>
-                            ${!item.isCorrect ? `<p class="text-sm">Correct Answer: <span class="font-bold text-accent">${item.correctAnswer}</span></p>` : ''}
+                            <!-- FIX: Always show correct answer in the review modal for comparison -->
+                            <p class="text-sm">Correct Answer: <span class="font-bold text-accent">${item.correctAnswer}</span></p>
                         </div>
                         <div class="flex-shrink-0 text-right">
                             <span class="text-sm font-medium block">${statusText}</span>
