@@ -272,27 +272,19 @@
     <!-- Tooltip Element for Charts --><div id="chart-tooltip" class="tooltip"></div>
 
     <script type="module">
-        // --- Firebase Imports ---
+        // --- Firebase Imports (Keeping structure minimal for compliance, but not functional) ---
+        // Note: Imports are kept for context, but all Firebase logic is replaced by localStorage.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { 
-            getFirestore, collection, doc, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, setLogLevel 
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // import { 
+        //     getFirestore, collection, doc, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, setLogLevel 
+        // } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global Firebase variables
-        let app;
-        let db;
-        let auth;
-        let userId;
-        let isAuthReady = false;
-
-        // Mandated global variables (will be undefined if running outside canvas)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
+        // Global variables related to persistence setup
+        const HISTORY_STORAGE_KEY = 'mentalMathHistory';
+        
         // Global variables for game state
-        let maxTime, numProblems, numTerms, maxDigits, minDigits; // Added minDigits
+        let maxTime, numProblems, numTerms, maxDigits, minDigits;
         let operationType;
         let currentProblem = null;
         let currentProblemIndex = 0;
@@ -300,16 +292,15 @@
         let timerInterval = null;
         let timeLeft;
         let isGameRunning = false;
-        let results = []; // To store problem results for review
-        let problemStartTime; // Tracks the start time of the current problem
-        let correctProblemTimes = []; // Stores time taken for each correct answer
-        let recentCorrectTimes = []; // Tracks 3 most recent correct times for difficulty scaling
+        let results = [];
+        let problemStartTime;
+        let correctProblemTimes = [];
+        let recentCorrectTimes = [];
 
         // --- DOM Elements ---
         const $settingsPanel = document.getElementById('settings-panel');
         const $gameArea = document.getElementById('game-area');
         const $startButton = document.getElementById('start-game');
-        // const $submitButton = document.getElementById('submit-answer'); // REMOVED
         const $answerInput = document.getElementById('answer-input');
         const $timer = document.getElementById('timer');
         const $progressTracker = document.getElementById('progress-tracker');
@@ -328,13 +319,12 @@
         
         const $stopButton = document.getElementById('stop-game');
         const $operationType = document.getElementById('operation-type');
-        const $numTermsInput = document.getElementById('num-terms'); // Get input element
         const $historyTable = document.getElementById('history-table');
         const $historyLoading = document.getElementById('history-loading');
         const $exportCsvButton = document.getElementById('export-csv');
         const $accuracyChart = document.getElementById('accuracy-chart'); 
         
-        // NEW TOTAL STATS ELEMENTS
+        // TOTAL STATS ELEMENTS
         const $totalSolvedDisplay = document.getElementById('total-solved-display');
         const $totalTimeDisplay = document.getElementById('total-time-display');
 
@@ -343,139 +333,89 @@
         const $getStrategyTipButton = document.getElementById('get-strategy-tip');
         const $strategyTipOutput = document.getElementById('strategy-tip-output');
         
-        // NEW ADVANCED ELEMENTS
+        // ADVANCED ELEMENTS
         const $chartTooltip = document.getElementById('chart-tooltip');
         
-        // Accessing the non-existent submit button for disabling/enabling logic 
-        // We will just use $answerInput.disabled instead of checking $submitButton.disabled
-        const $submitButton = { disabled: false }; // Dummy object to satisfy old submitButton references
-
-
-        // --- Firebase Setup ---
-
-        async function setupFirebase() {
-            if (!firebaseConfig) {
-                // If config is missing, initialize state to disabled but ready to run math core.
-                db = null;
-                isAuthReady = true; 
-                $historyLoading.textContent = "History disabled (Missing Configuration)";
-                $exportCsvButton.disabled = true;
-                $totalSolvedDisplay.textContent = 'N/A';
-                $totalTimeDisplay.textContent = 'N/A';
-                return;
-            }
-
-            try {
-                // setLogLevel('Debug'); // Enable for debugging
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        isAuthReady = true;
-                        console.log("Firebase authenticated. User ID:", userId);
-                        loadHistory(); // Start loading history once authenticated
-                    } else {
-                        userId = auth.currentUser?.uid || 'anonymous';
-                        isAuthReady = true; // Still mark as ready even if anonymous
-                        console.log("Firebase signed in anonymously. User ID:", userId);
-                        $historyLoading.textContent = "Signed in anonymously. History data is private.";
-                        loadHistory();
-                    }
-                });
-            } catch (error) {
-                console.error("Firebase setup failed:", error);
-                $historyLoading.textContent = "Error setting up history.";
-                db = null; // Mark DB as failed
-            }
-        }
-
-        function getCollectionPath() {
-             return `artifacts/${appId}/users/${userId}/math_results`;
-        }
-
-        async function saveResult(stats) {
-            if (!isAuthReady || db === null) {
-                console.warn("Auth not ready or DB failed. Cannot save result.");
-                return;
-            }
-            
-            try {
-                const docRef = await addDoc(collection(db, getCollectionPath()), {
-                    ...stats,
-                    timestamp: serverTimestamp(),
-                    userId: userId,
-                });
-                console.log("Document written with ID: ", docRef.id);
-            } catch (e) {
-                console.error("Error adding document: ", e);
-                // Display error subtly
-                $feedback.innerHTML = `<span class="text-error">Error saving history.</span>`;
-            }
-        }
+        // --- Persistence (Local Storage) Logic ---
 
         function loadHistory() {
-            if (!isAuthReady) return;
-            if (db === null) {
-                // If DB is null, ensure the loading message is gone and status is correct
-                $historyLoading.classList.add('hidden');
-                $historyTable.innerHTML = `<p class="text-center text-error">History and Total Stats are disabled.</p>`;
-                return;
-            }
+            try {
+                const historyJson = localStorage.getItem(HISTORY_STORAGE_KEY);
+                const allHistory = historyJson ? JSON.parse(historyJson) : [];
+                
+                // Sort history from newest to oldest
+                allHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-
-            // Use a higher limit for robust total calculations, but keep the table display limited to 10
-            const Q_LIMIT_FOR_TOTALS = 100; 
-
-            const q = query(
-                collection(db, getCollectionPath()),
-                orderBy("timestamp", "desc"),
-                limit(Q_LIMIT_FOR_TOTALS)
-            );
-
-            onSnapshot(q, (snapshot) => {
-                const allHistory = [];
                 let totalSolved = 0;
-                let totalTime = 0;
+                let totalTimeSeconds = 0;
 
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    allHistory.push(data);
-                    // Aggregate totals from all fetched documents
+                allHistory.forEach(data => {
                     totalSolved += parseInt(data.score || 0);
-                    totalTime += parseFloat(data.timeUsed || 0);
+                    totalTimeSeconds += parseFloat(data.timeUsed || 0);
                 });
+
+                const totalTimeMinutes = (totalTimeSeconds / 60).toFixed(0);
 
                 // Prepare limited history for the table (last 10)
                 const tableHistory = allHistory.slice(0, 10);
                 
-                // Calculate total time in minutes
-                const totalTimeMinutes = (totalTime / 60).toFixed(0);
-
-                // Render both the limited history table and the grand totals
                 renderHistory(tableHistory, { totalSolved, totalTime: totalTimeMinutes });
-                renderChart(allHistory); // Chart uses the full fetched history (up to 100)
-                
-                // Enable/Disable CSV export button based on data availability
+                renderChart(allHistory); // Chart uses the full history
+
                 if (allHistory.length > 0) {
                     $exportCsvButton.disabled = false;
-                    $exportCsvButton.onclick = () => downloadHistoryAsCSV(allHistory); // Pass all history for CSV
+                    $exportCsvButton.onclick = () => downloadHistoryAsCSV(allHistory);
                 } else {
                     $exportCsvButton.disabled = true;
                 }
-            }, (error) => {
-                console.error("Error loading history:", error);
-                $historyLoading.textContent = "Error loading history data.";
-            });
+                
+                $historyLoading.classList.add('hidden');
+                $historyTable.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error loading history from localStorage:", error);
+                $historyLoading.textContent = "History persistence failed in this browser.";
+                $totalSolvedDisplay.textContent = 'N/A';
+                $totalTimeDisplay.textContent = 'N/A';
+            }
         }
+
+        function saveResult(stats) {
+            try {
+                const historyJson = localStorage.getItem(HISTORY_STORAGE_KEY);
+                const allHistory = historyJson ? JSON.parse(historyJson) : [];
+                
+                // Add timestamp before saving
+                stats.timestamp = new Date().toISOString(); 
+                
+                allHistory.push(stats);
+
+                // Keep the history manageable in size (e.g., last 200 entries)
+                if (allHistory.length > 200) {
+                     allHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                     allHistory.splice(200);
+                }
+
+                localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(allHistory));
+                console.log("Result saved to localStorage.");
+                
+                // Reload history display immediately after saving
+                loadHistory(); 
+
+            } catch (e) {
+                console.error("Error saving document to localStorage: ", e);
+                $feedback.innerHTML = `<span class="text-error">Error saving history locally.</span>`;
+            }
+        }
+        
+        // Helper function for date formatting in history table
+        function formatDateForTable(isoDate) {
+            const date = new Date(isoDate);
+            const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' });
+            return { formattedDate, dayOfWeek };
+        }
+
 
         function renderHistory(history, totals) {
             // Update the Total Stats section
@@ -490,9 +430,7 @@
             }
 
             const rows = history.map(item => {
-                const date = item.timestamp ? new Date(item.timestamp.seconds * 1000) : new Date();
-                const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' });
+                const { formattedDate, dayOfWeek } = formatDateForTable(item.timestamp);
                 const fastestTime = item.fastestTime !== 'N/A' ? `<span class="text-accent">${item.fastestTime}s</span>` : 'N/A';
                 const accuracyColor = item.accuracy >= 90 ? 'text-accent' : item.accuracy >= 70 ? 'text-yellow-400' : 'text-error';
 
@@ -533,7 +471,9 @@
          * @param {Array<Object>} history - The array of quiz results.
          */
         function renderChart(history) {
-            const data = history.slice(0, 10).map(item => ({ 
+            // Get last 10 quizzes that were NOT stopped early (stopped quizzes skew the data)
+            const data = history.filter(item => item.title !== 'Challenge Stopped')
+                                .slice(0, 10).map(item => ({ 
                 accuracy: parseFloat(item.accuracy),
                 timeUsed: parseFloat(item.timeUsed),
                 numProblems: parseInt(item.numProblems),
@@ -569,7 +509,7 @@
             svgContent += `<text x="${width - 10}" y="${y50 - 2}" font-size="8" fill="#9ca3af" text-anchor="end">50%</text>`;
 
             data.forEach((item, index) => {
-                const barHeightAcc = item.accuracy * 0.9; // Scale to fit within 90% of height
+                const barHeightAcc = (item.accuracy * 0.9); // Scale to fit within 90% of height
                 const x = index * (barWidth + gap) + (gap / 2);
                 const yAcc = height - barHeightAcc;
 
@@ -652,7 +592,7 @@
             ].join(',');
             
             const csvRows = history.map(item => {
-                const date = item.timestamp ? new Date(item.timestamp.seconds * 1000) : new Date();
+                const date = new Date(item.timestamp);
                 const formattedDate = date.toLocaleDateString('en-US');
                 const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
                 
@@ -669,7 +609,7 @@
                     accuracy,
                     timeUsed,
                     fastestTime,
-                    item.minDigits || 'N/A', // Use saved minDigits
+                    item.minDigits || 'N/A',
                     item.maxDigits,
                     item.numTerms
                 ].join(',');
@@ -924,7 +864,6 @@
             
             // RE-ENABLE CONTROLS for the new problem
             $answerInput.disabled = false;
-            // $submitButton.disabled = false; // Submit button is gone
         }
 
         function updateStats() {
@@ -1202,6 +1141,8 @@
                 : 'N/A';
             
             const stats = {
+                title: title, // Added title to stats for better filtering
+                timestamp: new Date().toISOString(), // Use local ISO date string for consistency
                 operation: operationType,
                 score: score,
                 numProblems: actualProblems, // Only save based on problems attempted or set
@@ -1236,10 +1177,8 @@
             }
 
 
-            // Save results to Firestore
-            if (isAuthReady) {
-                saveResult(stats);
-            }
+            // Save results to Local Storage
+            saveResult(stats);
 
             $modalTitle.textContent = title;
             $modalMessage.innerHTML = `
@@ -1350,10 +1289,10 @@
 
         // --- Event Listeners ---
         document.addEventListener('DOMContentLoaded', () => {
-            setupFirebase(); // Initialize Firebase on load
+            // Replaced setupFirebase with loadHistory which uses localStorage
+            loadHistory(); 
             
             $startButton.addEventListener('click', startGame);
-            // $submitButton.addEventListener('click', submitAnswer); // REMOVED
             $closeModal.addEventListener('click', resetGame);
             $stopButton.addEventListener('click', () => endGame('Challenge Stopped'));
             $reviewProblemsButton.addEventListener('click', renderProblemReview);
