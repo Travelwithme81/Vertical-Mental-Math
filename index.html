@@ -355,10 +355,10 @@
 
         async function setupFirebase() {
             if (!firebaseConfig) {
-                console.error("Firebase config not available. History saving will be disabled.");
-                // FIX: Updated message for clarity.
-                $historyLoading.textContent = "History disabled (Canvas environment config missing).";
-                isAuthReady = false;
+                // If config is missing, initialize state to disabled but ready to run math core.
+                db = null;
+                isAuthReady = true; 
+                $historyLoading.textContent = "History disabled (Missing Configuration)";
                 $exportCsvButton.disabled = true;
                 $totalSolvedDisplay.textContent = 'N/A';
                 $totalTimeDisplay.textContent = 'N/A';
@@ -394,6 +394,7 @@
             } catch (error) {
                 console.error("Firebase setup failed:", error);
                 $historyLoading.textContent = "Error setting up history.";
+                db = null; // Mark DB as failed
             }
         }
 
@@ -402,8 +403,8 @@
         }
 
         async function saveResult(stats) {
-            if (!isAuthReady) {
-                console.warn("Auth not ready. Cannot save result.");
+            if (!isAuthReady || db === null) {
+                console.warn("Auth not ready or DB failed. Cannot save result.");
                 return;
             }
             
@@ -423,6 +424,13 @@
 
         function loadHistory() {
             if (!isAuthReady) return;
+            if (db === null) {
+                // If DB is null, ensure the loading message is gone and status is correct
+                $historyLoading.classList.add('hidden');
+                $historyTable.innerHTML = `<p class="text-center text-error">History and Total Stats are disabled.</p>`;
+                return;
+            }
+
 
             // Use a higher limit for robust total calculations, but keep the table display limited to 10
             const Q_LIMIT_FOR_TOTALS = 100; 
