@@ -1433,7 +1433,36 @@
                 $modal.classList.remove('hidden'); 
             });
             
+            // CORE HIGH-SPEED SUBMISSION LOGIC
             $answerInput.addEventListener('input', checkAndSubmitOnInput);
+            
+            // NEW: ENTER KEYPRESS LISTENER for starting the game ONLY
+            document.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    // Only start the game if the settings panel is visible (i.e., not in the middle of a challenge)
+                    if (!$gameArea.classList.contains('hidden')) {
+                        return; // Prevent Enter from doing anything while game is active/visible
+                    }
+
+                    // Check if the focus is on a field that accepts 'Enter' (like a number input for settings)
+                    const activeElement = document.activeElement;
+                    const isInputFocused = ['INPUT', 'SELECT'].includes(activeElement.tagName);
+                    
+                    if (isInputFocused) {
+                        // Allow input fields to process Enter (e.g., to confirm input value)
+                        // This prevents unexpected trigger unless focus is on the main body or button itself.
+                        // We check if the active element is the start button, or if no specific input is focused.
+                        return;
+                    }
+                    
+                    // If no relevant input field is focused, assume the user wants to start the game.
+                    e.preventDefault(); 
+                    if ($settingsPanel.classList.contains('hidden') === false) {
+                        $startButton.click();
+                    }
+                }
+            });
+
             
             // Input change listeners for saving settings
             document.getElementById('max-time').addEventListener('change', saveSettings);
